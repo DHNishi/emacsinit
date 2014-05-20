@@ -1,10 +1,19 @@
-
-
 (require 'package)
 (add-to-list 'package-archives
-    '("marmalade" .
-      "http://marmalade-repo.org/packages/"))
+	     '("marmalade" .
+	       "http://marmalade-repo.org/packages/"))
 (package-initialize)
+
+;;; Remove toolbars.
+(if (fboundp 'tool-bar-mode) (tool-bar-mode -1))
+(if (fboundp 'menu-bar-mode) (menu-bar-mode -1))
+
+(setq mac-command-modifier 'control)
+(setq mac-control-modifier 'super)
+
+;;; Give proper line-wrapping.
+;;; Add proper word wrapping
+(global-visual-line-mode t)
 
 ;;; Actual overwriting of relevant keybinds.
 ;;; Overwrite 'help' and 'recenter-something-or-another'.
@@ -22,8 +31,50 @@
 ;; Remap the kill-line command.
 (global-set-key [(control \;)] 'kill-line)
 
+;; Add in goto-line.
+(global-set-key "\M-g" 'goto-line)
+
+;; Add in an easy comment function.
+(global-set-key (kbd "C-c c") 'comment-dwim)
+
+;; Use a standard undo.
+(global-set-key "\C-z" 'undo)
+
 ;; Overwrite 'open-line' with open file keybind.
 (global-set-key "\C-o" 'ido-find-file)
+
+;; Avoid using M-x when possible. (citation: Yegge)
+(global-set-key "\C-x\C-m" 'execute-extended-command)
+(global-set-key "\C-c\C-m" 'execute-extended-command)
+(global-set-key (kbd "C-x m") 'execute-extended-command)
+
+(global-set-key "\C-w" 'backward-kill-word)
+(global-set-key "\C-x\C-k" 'kill-region)
+(global-set-key "\C-c\C-k" 'kill-region)
+
+;;; Avoid killing buffers accidentally.
+;;; This doesn't actually work.
+(defun ask-before-killing-buffer ()
+  (let ((buffer (current-buffer)))
+    (cond
+     ((equal (buffer-name) "*scratch*")
+      ;; Never kill *scratch*
+      nil)
+     ((and buffer-file-name (buffer-modified-p))
+      ;; If there's a file associated with the buffer,
+      ;; make sure it's saved
+      (y-or-n-p (format "Buffer %s modified; kill anyway? "
+			(buffer-name))))
+     ((get-buffer-process buffer)
+      ;; If there's a process associated with the buffer,
+      ;; make sure it's dead
+      (y-or-n-p (format "Process %s active; kill anyway? "
+			(process-name (get-buffer-process buffer)))))
+     (t t))))
+(add-to-list 'kill-buffer-query-functions
+             'ask-before-killing-buffer)
+
+;;;;;;; Packages
 
 ;; Autocomplete everywhere.
 (require 'auto-complete)
@@ -66,8 +117,8 @@
 
 (require 'package)
 (add-to-list 'package-archives
-    '("marmalade" .
-      "http://marmalade-repo.org/packages/"))
+	     '("marmalade" .
+	       "http://marmalade-repo.org/packages/"))
 (package-initialize)
 
 ;; Autocomplete everywhere.
@@ -154,17 +205,24 @@
 
 ;;; Makes it so yank does indentation.
 (dolist (command '(yank yank-pop))
-   (eval `(defadvice ,command (after indent-region activate)
-            (and (not current-prefix-arg)
-                 (member major-mode '(emacs-lisp-mode lisp-mode
-                                                      clojure-mode    scheme-mode
-                                                      haskell-mode    ruby-mode
-                                                      rspec-mode      python-mode
-                                                      c-mode          c++-mode
-                                                      objc-mode       latex-mode
-                                                      plain-tex-mode))
-                 (let ((mark-even-if-inactive transient-mark-mode))
-                   (indent-region (region-beginning) (region-end) nil))))))
+  (eval `(defadvice ,command (after indent-region activate)
+	   (and (not current-prefix-arg)
+		(member major-mode '(emacs-lisp-mode lisp-mode
+						     clojure-mode    scheme-mode
+						     haskell-mode    ruby-mode
+						     rspec-mode      python-mode
+						     c-mode          c++-mode
+						     objc-mode       latex-mode
+						     plain-tex-mode))
+		(let ((mark-even-if-inactive transient-mark-mode))
+		  (indent-region (region-beginning) (region-end) nil))))))
+
+;;; Gotta have my parens.
+(require 'smartparens)
+(require 'smartparens-config)
+(require 'paren)
+(setq show-paren-style 'mixed)
+(show-paren-mode +1)
 
 ;;; Activate IDO.
 ;;; This adds a great deal of autocompletion-y style stuff everywhere.
